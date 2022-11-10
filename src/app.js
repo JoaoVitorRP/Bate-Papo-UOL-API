@@ -42,7 +42,7 @@ app.post("/participants", async (req, res) => {
 
     res.sendStatus(201);
   } catch (err) {
-    res.sendStatus(422);
+    console.log(err);
   }
 });
 
@@ -51,13 +51,46 @@ app.get("/participants", async (req, res) => {
     const participantsList = await db.collection("users").find().toArray();
     res.send(participantsList);
   } catch (err) {
-    res.sendStatus(404);
+    console.log(err);
+  }
+});
+
+app.post("/messages", async (req, res) => {
+  const { to, text, type } = req.body;
+  const user = req.headers.user;
+
+  const hour = dayjs().hour();
+  const minute = dayjs().minute();
+  const second = dayjs().second();
+
+  if (!user) {
+    res.status(400).send("Missing headers field!");
+    return;
+  }
+
+  try {
+    await db.collection("messages").insertOne({
+      from: `${user}`,
+      to,
+      text,
+      type,
+      time: `${hour}:${minute}:${second}`,
+    });
+
+    res.sendStatus(201);
+  } catch (err) {
+    console.log(err);
   }
 });
 
 app.get("/messages", async (req, res) => {
   const user = req.headers.user;
   const limit = req.query.limit;
+
+  if (!user) {
+    res.status(400).send("Missing headers field!");
+    return;
+  }
 
   try {
     let messagesList = await db
@@ -69,7 +102,7 @@ app.get("/messages", async (req, res) => {
 
     res.send(messagesList);
   } catch (err) {
-    res.sendStatus(404);
+    console.log(err);
   }
 });
 
