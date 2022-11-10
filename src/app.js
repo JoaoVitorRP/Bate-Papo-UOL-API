@@ -20,11 +20,14 @@ try {
   console.log(err);
 }
 
+function getHour(){
+    const todayDate = new Date();
+    const hour = dayjs(todayDate).format('HH:mm:ss');
+    return hour;
+}
+
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
-  const hour = dayjs().hour();
-  const minute = dayjs().minute();
-  const second = dayjs().second();
 
   try {
     await db.collection("users").insertOne({
@@ -37,7 +40,7 @@ app.post("/participants", async (req, res) => {
       to: "Todos",
       text: "Entra na sala...",
       type: "status",
-      time: `${hour}:${minute}:${second}`,
+      time: getHour(),
     });
 
     res.sendStatus(201);
@@ -59,10 +62,6 @@ app.post("/messages", async (req, res) => {
   const { to, text, type } = req.body;
   const user = req.headers.user;
 
-  const hour = dayjs().hour();
-  const minute = dayjs().minute();
-  const second = dayjs().second();
-
   if (!user) {
     res.status(400).send("Missing headers field!");
     return;
@@ -74,7 +73,7 @@ app.post("/messages", async (req, res) => {
       to,
       text,
       type,
-      time: `${hour}:${minute}:${second}`,
+      time: getHour(),
     });
 
     res.sendStatus(201);
@@ -101,6 +100,31 @@ app.get("/messages", async (req, res) => {
     limit !== undefined ? (messagesList = messagesList.slice(-limit)) : null;
 
     res.send(messagesList);
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+app.post("/status", async (req, res) => {
+  const user = req.headers.user;
+
+  try {
+    const participant = await db.collection("users").find({ name: user }).toArray();
+
+    if (participant.length > 0) {
+      await db.collection("users").updateOne(
+        { name: user },
+        {
+          $set: {
+            lastStatus: Date.now(),
+          },
+        }
+      );
+
+      res.sendStatus(200);
+    } else {
+      res.sendStatus(404);
+    }
   } catch (err) {
     console.log(err);
   }
