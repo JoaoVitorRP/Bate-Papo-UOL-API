@@ -23,6 +23,8 @@ try {
 app.post("/participants", async (req, res) => {
   const { name } = req.body;
   const hour = dayjs().hour();
+  const minute = dayjs().minute();
+  const second = dayjs().second();
 
   try {
     await db.collection("users").insertOne({
@@ -35,7 +37,7 @@ app.post("/participants", async (req, res) => {
       to: "Todos",
       text: "Entra na sala...",
       type: "status",
-      time: hour,
+      time: `${hour}:${minute}:${second}`,
     });
 
     res.sendStatus(201);
@@ -48,6 +50,24 @@ app.get("/participants", async (req, res) => {
   try {
     const participantsList = await db.collection("users").find().toArray();
     res.send(participantsList);
+  } catch (err) {
+    res.sendStatus(404);
+  }
+});
+
+app.get("/messages", async (req, res) => {
+  const user = req.headers.user;
+  const limit = req.query.limit;
+
+  try {
+    let messagesList = await db
+      .collection("messages")
+      .find({ $or: [{ from: `${user}` }, { to: "Todos" }, { to: `${user}` }] })
+      .toArray();
+
+    limit !== undefined ? (messagesList = messagesList.slice(-limit)) : null;
+
+    res.send(messagesList);
   } catch (err) {
     res.sendStatus(404);
   }
