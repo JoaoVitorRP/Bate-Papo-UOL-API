@@ -134,7 +134,7 @@ app.get("/messages", async (req, res) => {
   try {
     let messagesList = await db
       .collection("messages")
-      .find({ $or: [{ from: `${user}` }, { to: "Todos" }, { to: `${user}` }] })
+      .find({ $or: [{ from: `${user}` }, { to: `${user}` }, { to: "Todos" }, { type: "message" }] })
       .toArray();
 
     limit !== undefined ? (messagesList = messagesList.slice(-limit)) : null;
@@ -169,5 +169,25 @@ app.post("/status", async (req, res) => {
     res.sendStatus(500);
   }
 });
+
+setInterval(async () => {
+  const timeNow = Date.now();
+  const users = await db.collection("users").find().toArray();
+
+  users.forEach(async (user) => {
+    const lastActivity = user.lastStatus;
+
+    if (timeNow - lastActivity >= 10000) {
+      await db.collection("users").deleteOne({ name: user.name });
+      await db.collection("messages").insertOne({
+        from: user.name,
+        to: "Todos",
+        text: "Sai da sala...",
+        type: "status",
+        time: getHour(),
+      });
+    }
+  });
+}, 15000);
 
 app.listen(5000, () => console.log("Server running in port: 5000"));
