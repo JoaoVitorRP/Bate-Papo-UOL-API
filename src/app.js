@@ -1,7 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { MongoClient } from "mongodb";
+import { MongoClient, ObjectId } from "mongodb";
 import dayjs from "dayjs";
 import joi from "joi";
 
@@ -153,6 +153,7 @@ app.post("/status", async (req, res) => {
 
     if (!userStillOnline) {
       res.sendStatus(404);
+      return;
     }
 
     await db.collection("users").updateOne(
@@ -189,5 +190,29 @@ setInterval(async () => {
     }
   });
 }, 15000);
+
+app.delete("/messages/:id", async (req, res) => {
+  const { id } = req.params;
+  const { user } = req.headers;
+
+  try {
+    const message = await db.collection("messages").findOne({ _id: ObjectId(id) });
+
+    if (!message) {
+      res.status(404).send("Couldn't find a message with this id!");
+      return;
+    }
+
+    if (message.from !== user) {
+      res.status(401).send("The user is not the owner of this message!");
+      return;
+    }
+
+    await db.collection("messages").deleteOne({ _id: ObjectId(id) });
+    res.sendStatus(200);
+  } catch (err) {
+    res.status(500).send(err.message);
+  }
+});
 
 app.listen(5000, () => console.log("Server running in port: 5000"));
