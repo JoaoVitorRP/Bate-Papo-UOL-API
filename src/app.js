@@ -215,4 +215,59 @@ app.delete("/messages/:id", async (req, res) => {
   }
 });
 
+app.put("/messages/:id", async (req, res) => {
+  const { id } = req.params;
+  const { to, text, type } = req.body;
+  const { user } = req.headers;
+
+  if (!user) {
+    res.status(400).send("Missing headers field!");
+    return;
+  }
+
+  const userExists = await db.collection("users").findOne({ name: user });
+
+  if (!userExists) {
+    res.status(422).send("User doesn't exist!");
+    return;
+  }
+
+  const { error } = messageSchema.validate(req.body, { abortEarly: false });
+
+  if (error) {
+    const errors = error.details.map((detail) => detail.message);
+    res.status(422).send(errors);
+    return;
+  }
+
+  try {
+    const message = await db.collection("messages").findOne({ _id: ObjectId(id) });
+
+    if (!message) {
+      res.status(404).send("Couldn't find a message with this id!");
+      return;
+    }
+
+    if (message.from !== user) {
+      res.status(401).send("The user is not the owner of this message!");
+      return;
+    }
+
+    await db.collection("messages").updateOne(
+      { _id: ObjectId(id) },
+      {
+        $set: {
+          to,
+          text,
+          type,
+        },
+      }
+    );
+
+    res.sendStatus(200);
+  } catch (err) {
+    res.sendStatus(500);
+  }
+});
+
 app.listen(5000, () => console.log("Server running in port: 5000"));
